@@ -3,7 +3,7 @@
         const roomName = JSON.parse(document.getElementById('room-name').textContent);
         const username = JSON.parse(document.getElementById('username').textContent);
         var clients={};
-        var localpeer, remotepeer;
+        
         const chatSocket = new WebSocket(
             'ws://'
             + window.location.host
@@ -13,7 +13,7 @@
         );
         //trickes whenever a mew message is arrives at the server
         
-        var dict={};
+        
         chatSocket.onopen =function(e){
             console.log("connection open");
             
@@ -65,6 +65,8 @@
         const startButton = document.getElementById('startButton');
         const callButton = document.getElementById('callButton');
         const hangupButton = document.getElementById('hangupButton');
+        const recordButton = document.querySelector('#record');
+        const shareButton = document.querySelector('#screen-share');
 
         callButton.disabled = true;
         hangupButton.disabled = true;
@@ -89,6 +91,7 @@ function gotLocalMediaStream(mediaStream) {
     localStream = mediaStream;
     trace('Received local stream.');
     callButton.disabled = false;  // Enable call button.
+
 
     const videoTracks = localStream.getVideoTracks();
     const audioTracks = localStream.getAudioTracks();
@@ -126,6 +129,7 @@ function startAction() {
     .then(gotLocalMediaStream).catch((error)=>{
         console.log("error in accessing media devices",error)
     });
+    
     trace('Requesting local stream.');
     
 }
@@ -136,10 +140,94 @@ function callAction()
     sendsignal('new-peer',{});
     hangupButton.disabled = false;
     callButton.disabled = true;
-    
+    // recordButton.disabled=false;
+    // shareButton.disabled=false;
     // dict.forEach((k, v) => console.log(`Key is ${k} and value is ${v}`));
 }
+async function recordAction(){
+    let mediaRecorder;
+    let recordedBlobs;
+    let stream;
+    const constraints = {
+        video: {
+            displaySurface :"application"
+        },
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+        }
+        
+            
+    };
+    const downloadButton = document.querySelector('#download');
+    
 
+    if (recordButton.textContent === 'Start Recording') {
+        startRecording();
+    } else {
+        stopRecording();
+        recordButton.textContent = 'Start Recording';
+        downloadButton.disabled = false;
+    }
+    downloadButton.addEventListener('click', () => {
+        const blob = new Blob(recordedBlobs, {type: 'video/webm'});
+        const url =URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'test.webm';
+        document.body.appendChild(a);
+        a.click();
+        
+    });
+
+
+    async function handleDataAvailable(event) {
+        console.log('handleDataAvailable', event);
+        if (event.data && event.data.size > 0) {
+            recordedBlobs.push(event.data);
+        }
+        return;
+    }
+
+
+    async function startRecording() {
+        stream = await navigator.mediaDevices.getDisplayMedia(constraints)
+        .then(()=>{
+            handleSuccess();
+        }).catch((error)=>{
+            console.error('navigator.getUserMedia error:', error);
+        })
+        window.stream=stream;
+        recordedBlobs = [];
+        try {
+            mediaRecorder = new MediaRecorder();
+        }catch (e) {
+            console.error('Exception while creating MediaRecorder:', e);
+            
+        }
+
+        recordButton.textContent = 'Stop Recording';
+        downloadButton.disabled = true;
+        mediaRecorder.onstop = (event) => {
+            console.log('Recorder stopped: ', event);
+            console.log('Recorded Blobs: ', recordedBlobs);
+        };
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.start();
+        console.log('MediaRecorder started', mediaRecorder);
+    }
+
+    async function stopRecording() {
+        mediaRecorder.stop();
+    }
+
+    async function handleSuccess() {
+        recordButton.disabled = false;
+        console.log('getUserMedia() got stream:', stream);
+        return;
+    }
+}
 // call end function
 function hangupAction() {
     
@@ -148,7 +236,9 @@ function hangupAction() {
     });
     localStream.getTracks().forEach(function(track) {
         track.stop();
-      });
+    });
+    startButton.disabled = true;
+    
     hangupButton.disabled = true;
     callButton.disabled = false;
     trace('Ending call.');
@@ -287,6 +377,20 @@ function createVideo(){
     
 }
 
+// async function shareAction(){
+//     shareButton.disabled=true;
+//     const stream=await navigator.mediaDevices.getDisplayMedia({video:true});
+//     localVideo.srcObject=stream;
+//     localStream=stream;
+//     var peer=clients[username];
+//     addtracks(peer);
+//     localStream.getVideoTracks()[0].addEventListener('ended', () => {
+//         console.log('The user has ended sharing the screen');
+//         startAction();
+//         shareButton.disabled = false;
+//     });
+// }
+
 
 function addtracks(peer){
     localStream.getTracks().forEach(track=>{
@@ -300,6 +404,8 @@ var btnvideo=document.querySelector("#video");
 startButton.addEventListener('click', startAction);
 callButton.addEventListener('click', callAction);
 hangupButton.addEventListener('click', hangupAction);
+// recordButton.addEventListener('click', recordAction);
+// shareButton.addEventListener('click', shareAction);
 
 // trace function
 function trace(text) {

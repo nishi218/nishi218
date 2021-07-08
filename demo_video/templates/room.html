@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-	{%load static%}
-    <meta charset="utf-8"/>
+    {%load static %}
+	<meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{%static 'pop.css'%}">
+    <link rel="stylesheet" href="{%static 'emojionearea.min.css'%}">
+    
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <title>Chat Room</title>
@@ -14,30 +16,37 @@
         <button  onclick="myFunction()" style="margin-right: 30px;top: 100%;" ><i class="material-icons" style='font-size:36px'>chat</i></button>
         <div class="popuptext" id="myPopup">
             <textarea id="chat-log" cols="100" rows="20"></textarea><br>
+            
             <input id="chat-message-input" type="text" size="100"><br>
             <input id="chat-message-submit" type="button" value="Send">
         </div>
     </div>
     <div id="video-container">
-        <div ><video id="localVideo"   autoplay playsinline></video></div>
+        <div ><video id="localVideo"  autoplay playsinline></video></div>
         <video id="remoteVideo"  autoplay playsinline></video>
 
     </div>
     
     <div>
-        <button id="audio">Audio UnMute</button>
-        <button id="video">Video UnMute</button>
         <button id="startButton">Start</button>
         <button id="callButton">Call</button>
+        <button id="audio">Audio UnMute</button>
+        <button id="video">Video UnMute</button>
+        <button id="screen-share" disabled>Share Screen</button>
+        
+        <!-- <button id="record" disabled>Start Recording</button>
+        <button id="download" disabled>Download</button> -->
         <button id="hangupButton">Hang Up</button>
     </div>
-
+       
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   
 	{{ room_name|json_script:"room-name" }}
 	{{ username|json_script:"username" }}
     
     <script src="{%static 'main1.js' %}"> </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="{%static 'emojionearea.min.js' %}"> </script>
     
     
     <script>
@@ -46,6 +55,11 @@
           var popup = document.getElementById("myPopup");
           popup.classList.toggle("show");
         }
+        $(document).ready(function(){
+            $("#chat-message-input").emojioneArea({
+                pickerPosition:"bottom-right"
+            });
+        })
         </script>
 </body>
 </html>

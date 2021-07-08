@@ -3,6 +3,7 @@
   width: 50px;
 }
 .popup {
+  float: right;
   position: relative;
   display: inline-block;
   cursor: pointer;
