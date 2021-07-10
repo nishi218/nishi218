@@ -3,63 +3,143 @@
 <head>
     {%load static %}
 	<meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{%static 'pop.css'%}">
-    <link rel="stylesheet" href="{%static 'emojionearea.min.css'%}">
-    
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{%static 'emojionearea.min.css' %}">
     <title>Chat Room</title>
+    <style>
+        html{
+            background-color: black;
+            box-sizing:border-box;
+
+        }
+        body{
+            height: 100%;
+            margin: 0;
+            padding: 10px;
+        }
+        #video-container {
+            /* height: 100%; */
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* width: 100%; */
+            text-align: center;
+            padding: 10px;
+            background-color: black;
+            
+        }
+        #container{
+            display: grid;
+        }
+        #main-container {
+            
+            /* height: 100%; */
+            
+            background-color: black;
+            
+        }
+        video {
+            border-radius: 30px;
+            height: 300px;
+            width: 300px;
+            background-color: black;
+        }
+        
+        .buttons{
+            width: 50%;
+            margin: 0;
+            align-items: center;
+            position: absolute;
+            bottom: 10px;
+            left: 30%;
+            
+        }
+        button{
+            background-color: #04AA6D;
+            color: white;
+            padding: 14px 20px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        button:disabled{
+            background-color: rgb(255, 38, 0);
+        }
+        
+    </style>
+    <link rel="stylesheet" href="{%static 'pop.css' %}" type="text/css">
+    <link rel="stylesheet" href="{%static 'dropdown.css' %}" type="text/css">
+    
 </head>
 <body>
-    <div class="popup">
-        <button  onclick="myFunction()" style="margin-right: 30px;top: 100%;" ><i class="material-icons" style='font-size:36px'>chat</i></button>
-        <div class="popuptext" id="myPopup">
-            <textarea id="chat-log" cols="100" rows="20"></textarea><br>
-            
-            <input id="chat-message-input" type="text" size="100"><br>
-            <input id="chat-message-submit" type="button" value="Send">
-        </div>
-    </div>
-    <div id="video-container">
-        <div ><video id="localVideo"  autoplay playsinline></video></div>
-        <video id="remoteVideo"  autoplay playsinline></video>
-
-    </div>
-    
-    <div>
-        <button id="startButton">Start</button>
-        <button id="callButton">Call</button>
-        <button id="audio">Audio UnMute</button>
-        <button id="video">Video UnMute</button>
-        <button id="screen-share" disabled>Share Screen</button>
-        
-        <!-- <button id="record" disabled>Start Recording</button>
-        <button id="download" disabled>Download</button> -->
-        <button id="hangupButton">Hang Up</button>
-    </div>
-       
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  
-	{{ room_name|json_script:"room-name" }}
+    {{ room_name|json_script:"room-name" }}
 	{{ username|json_script:"username" }}
     
-    <script src="{%static 'main1.js' %}"> </script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-    <script src="{%static 'emojionearea.min.js' %}"> </script>
     
-    
-    <script>
-        // When the user clicks on div, open the popup
-        function myFunction() {
-          var popup = document.getElementById("myPopup");
-          popup.classList.toggle("show");
-        }
-        $(document).ready(function(){
-            $("#chat-message-input").emojioneArea({
-                pickerPosition:"bottom-right"
+    <div id="main-container">
+
+        <div id="mySidepanel" class="sidepanel">
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+            <textarea id="chat-log" cols="100" rows="40"></textarea><br>
+             <input id="chat-message-input" type="text" size="100"><br>
+             <input id="chat-message-submit" type="button" value="Send">             
+          </div>
+          
+          <button  class="openbtn" onclick="openNav()"  ><i class="material-icons" style='font-size:36px;padding: 5px;'>chat</i></button>
+                      
+          <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+            <script src="{%static 'emojionearea.min.js' %}"> </script>
+        
+          <script>
+            function openNav() {
+                document.getElementById("mySidepanel").style.width = "330px";
+            }
+            function closeNav() {
+                document.getElementById("mySidepanel").style.width = "0";
+            }
+          $(document).ready(function(){
+                $("#chat-message-input").emojioneArea({
+                    pickerPosition:"bottom-right"
+                });
             });
-        })
-        </script>
+          </script>
+        <div id="container">
+            <div id="video-container">
+                <div ><video id="localVideo"  autoplay playsinline></video></div>
+            </div>
+        </div>
+        
+        
+        <div class="buttons">
+            
+            <button id="callButton">Call</button>
+            <button id="audio">Audio Mute</button>
+            <button id="video">Video Mute</button>
+            <button id="screen-share" disabled>Share Screen</button>
+            <div class="custom-select" >
+                <select >
+                    <option value="none">Select Filters</option>
+                    <option value="none">Normal</option>
+                        <option value="blur(10px)">Blur</option>
+                        <option value="brightness(100%)">brightness</option>
+                        <option value="contrast(100%)">contrast</option>
+                        <option value="grayscale(100%)">grayscale</option>
+                        <option value="invert(100%)">invert</option>
+                        <option value="sepia(100%)">sepia</option>
+                </select>
+              </div>
+            <button id="clear">Clear Filter</button>
+            <button id="hangupButton">Hang Up</button>
+        </div> 
+        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+        <script src="{%static 'main1.js' %}"> </script>
+        <script src="{%static 'dropdown.js' %}"></script>
+    </div>
+    
 </body>
 </html>

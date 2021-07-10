@@ -1,9 +1,9 @@
-        'use_strict'
+'use_strict'
         
         const roomName = JSON.parse(document.getElementById('room-name').textContent);
         const username = JSON.parse(document.getElementById('username').textContent);
         var clients={};
-        
+        var senders=[];
         const chatSocket = new WebSocket(
             'ws://'
             + window.location.host
@@ -58,17 +58,15 @@
         }
         // let remoteVideo;
         const localVideo = document.getElementById('localVideo');
-        var remoteVideo = document.getElementById('remoteVideo');
-        let localStream;
-        let remoteStream;
+        let localStream,remoteStream;
         
-        const startButton = document.getElementById('startButton');
+        // const startButton = document.getElementById('startButton');
         const callButton = document.getElementById('callButton');
         const hangupButton = document.getElementById('hangupButton');
         const recordButton = document.querySelector('#record');
         const shareButton = document.querySelector('#screen-share');
 
-        callButton.disabled = true;
+        
         hangupButton.disabled = true;
 
         //media access
@@ -90,7 +88,7 @@ function gotLocalMediaStream(mediaStream) {
     localVideo.srcObject = mediaStream;
     localStream = mediaStream;
     trace('Received local stream.');
-    callButton.disabled = false;  // Enable call button.
+    
 
 
     const videoTracks = localStream.getVideoTracks();
@@ -115,131 +113,41 @@ function gotLocalMediaStream(mediaStream) {
     });
 
 }
-//handles remote stream by adding it to remote video
-function gotRemoteMediaStream(event) {
-    const mediaStream = event.stream;
-    remoteVideo.srcObject = mediaStream;
-    remoteStream = mediaStream;
-    trace('Remote peer connection received remote stream.');
-}
-//to access media devices for local video
-function startAction() {
-    startButton.disabled = true;
+
+// to make video call to others in the room
+
+function callAction() {
+    shareButton.disabled = false;
+    hangupButton.disabled=false;
+    // dict.push(username);
+    callButton.disabled = true;
+    
     navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
     .then(gotLocalMediaStream).catch((error)=>{
         console.log("error in accessing media devices",error)
     });
+    sendsignal('new-peer',{});
     
     trace('Requesting local stream.');
     
 }
-
-// to make video call to others in the room
-function callAction()
-{
-    sendsignal('new-peer',{});
-    hangupButton.disabled = false;
-    callButton.disabled = true;
-    // recordButton.disabled=false;
-    // shareButton.disabled=false;
-    // dict.forEach((k, v) => console.log(`Key is ${k} and value is ${v}`));
-}
-async function recordAction(){
-    let mediaRecorder;
-    let recordedBlobs;
-    let stream;
-    const constraints = {
-        video: {
-            displaySurface :"application"
-        },
-        audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-        }
-        
-            
-    };
-    const downloadButton = document.querySelector('#download');
-    
-
-    if (recordButton.textContent === 'Start Recording') {
-        startRecording();
-    } else {
-        stopRecording();
-        recordButton.textContent = 'Start Recording';
-        downloadButton.disabled = false;
-    }
-    downloadButton.addEventListener('click', () => {
-        const blob = new Blob(recordedBlobs, {type: 'video/webm'});
-        const url =URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'test.webm';
-        document.body.appendChild(a);
-        a.click();
-        
-    });
+var dict=[];
 
 
-    async function handleDataAvailable(event) {
-        console.log('handleDataAvailable', event);
-        if (event.data && event.data.size > 0) {
-            recordedBlobs.push(event.data);
-        }
-        return;
-    }
-
-
-    async function startRecording() {
-        stream = await navigator.mediaDevices.getDisplayMedia(constraints)
-        .then(()=>{
-            handleSuccess();
-        }).catch((error)=>{
-            console.error('navigator.getUserMedia error:', error);
-        })
-        window.stream=stream;
-        recordedBlobs = [];
-        try {
-            mediaRecorder = new MediaRecorder();
-        }catch (e) {
-            console.error('Exception while creating MediaRecorder:', e);
-            
-        }
-
-        recordButton.textContent = 'Stop Recording';
-        downloadButton.disabled = true;
-        mediaRecorder.onstop = (event) => {
-            console.log('Recorder stopped: ', event);
-            console.log('Recorded Blobs: ', recordedBlobs);
-        };
-        mediaRecorder.ondataavailable = handleDataAvailable;
-        mediaRecorder.start();
-        console.log('MediaRecorder started', mediaRecorder);
-    }
-
-    async function stopRecording() {
-        mediaRecorder.stop();
-    }
-
-    async function handleSuccess() {
-        recordButton.disabled = false;
-        console.log('getUserMedia() got stream:', stream);
-        return;
-    }
-}
 // call end function
 function hangupAction() {
     
+    // sendsignal('user-left',{});
     remoteStream.getTracks().forEach(function(track) {
         track.stop();
     });
     localStream.getTracks().forEach(function(track) {
         track.stop();
-    });
-    startButton.disabled = true;
-    
+      });
+    localVideo.srcObject=null;
+    sendsignal('user-left',{});
     hangupButton.disabled = true;
+    // startButton.disabled=false;
     callButton.disabled = false;
     trace('Ending call.');
 }
@@ -249,25 +157,41 @@ const offerOptions = {
     
 };
 
+function gotRemoteMediaStream(peer,remotevideo){
+    remoteStream = new MediaStream();
+    remotevideo.srcObject=remoteStream;
+    peer.addEventListener('track', async (event)=>{
+        remoteStream.addTrack(event.track,remoteStream);
+    });
+}
+var fucked=false;
+function fuck(){
+    fucked=true;
+}
 function createOfferer(user,channel_name){
     var peer=new RTCPeerConnection(canf);
     addtracks(peer);
+    console.log(user);
+    console.log("offerer's peer",peer);
+    // callButton.disabled=true;
+    
     var dc=peer.createDataChannel('channel');
     dc.addEventListener('open',()=>{
         console.log("connection open");
     });
     dc.addEventListener('message',dconmessage);
-    createVideo();
-    peer.addEventListener('addstream', gotRemoteMediaStream);
+    var remotevideo=createVideo(user);
+    gotRemoteMediaStream(peer,remotevideo);
     clients[user]=[peer,dc];
 
     peer.addEventListener('iceconnectionstatechange',()=>{
         var ice=peer.iceConnectionState;
         if(ice==='failed'||ice==='closed'||ice==='disconnected'){
+            console.log("ice",user);
             delete clients[user];
             if(ice !='closed')
                 peer.close();
-            removevideo(remoteVideo);
+            removevideo(remotevideo);
         }        
     });
     peer.addEventListener('icecandidate',(event)=>{
@@ -302,9 +226,10 @@ function dconmessage(event){
 function createAnswerer(offer,user,channel_name){
     var peer=new RTCPeerConnection(canf);
     addtracks(peer);
-    
-    createVideo(user);
-    peer.addEventListener('addstream', gotRemoteMediaStream);
+    console.log("answer=",user);
+    // console.log("answerer's peer",peer);
+    var remotevideo=createVideo(user);
+    gotRemoteMediaStream(peer,remotevideo);
     
     peer.addEventListener('datachannel',e=>{
         peer.dc=e.channel;
@@ -315,16 +240,17 @@ function createAnswerer(offer,user,channel_name){
         clients[user]=[peer,peer.dc];
     
     });
-    
+    // console.log(clients[username][0]);
 
 
     peer.addEventListener('iceconnectionstatechange',()=>{
         var ice=peer.iceConnectionState;
         if(ice==='failed'||ice==='closed'||ice==='disconnected'){
+            console.log("ice",user);
             delete clients[user];
             if(ice !='closed')
                 peer.close();
-            removevideo(remoteVideo);
+            removevideo(remotevideo);
         }        
     });
     peer.addEventListener('icecandidate',(event)=>{
@@ -369,43 +295,48 @@ function removevideo(remote_video){
     viv.parentNode.removeChild(viv);
 }
 
-function createVideo(){
+function createVideo(user){
     var videoe=document.querySelector("#video-container");
     var videoappend=document.createElement('div');
+    var remotevideo = document.createElement("video");
+    remotevideo.id=user + "-video";
+    remotevideo.autoplay=true;
+    remotevideo.playsInline=true;
+
     videoe.appendChild(videoappend);
-    videoappend.appendChild(remoteVideo);
+    videoappend.appendChild(remotevideo);
+    return remotevideo;
     
 }
 
-// async function shareAction(){
-//     shareButton.disabled=true;
-//     const stream=await navigator.mediaDevices.getDisplayMedia({video:true});
-//     localVideo.srcObject=stream;
-//     localStream=stream;
-//     var peer=clients[username];
-//     addtracks(peer);
-//     localStream.getVideoTracks()[0].addEventListener('ended', () => {
-//         console.log('The user has ended sharing the screen');
-//         startAction();
-//         shareButton.disabled = false;
-//     });
-// }
+function shareAction(){
+    navigator.mediaDevices.getDisplayMedia({cursor:true})
+    .then(stream=>{
+        const streamtrack =stream.getTracks()[0];
+        senders.find(senders=>senders.track.kind==='video').replaceTrack(streamtrack);
+        localVideo.srcObject=stream;
+        // shareButton.innerHTML="Stop Share";
+        streamtrack.onended = function (){
+            senders.find(senders=>senders.track.kind==='video').replaceTrack(localStream.getTracks()[1]);
+            localVideo.srcObject=localStream;
+        }
+    })
+}
 
 
 function addtracks(peer){
     localStream.getTracks().forEach(track=>{
-        peer.addTrack(track,localStream);
+        senders.push(peer.addTrack(track,localStream));
     });
     return;
 }
 var btnaudio=document.querySelector("#audio");
 var btnvideo=document.querySelector("#video");
-// Add click event handlers for buttons.
-startButton.addEventListener('click', startAction);
+
+
 callButton.addEventListener('click', callAction);
 hangupButton.addEventListener('click', hangupAction);
-// recordButton.addEventListener('click', recordAction);
-// shareButton.addEventListener('click', shareAction);
+shareButton.addEventListener('click', shareAction);
 
 // trace function
 function trace(text) {
@@ -422,9 +353,10 @@ function websocketrecievemessage(event){
     var user=data['user'];
     var action=data['action'];
     if(action=="new-message"){
-        document.querySelector('#chat-log').value += (user+ ":" + data['message'] + '\n');
+        document.querySelector('#chat-log').value += (" "+user+ ":" + data['message'] + '\n');
         return;
     }
+    
     if(user==username)
         return;
     var receiver_channel=data['message']['receiver_channel_name'];
@@ -448,8 +380,26 @@ function websocketrecievemessage(event){
         // }
         console.log("answer from",user);
         var answer=data['message']['sdp'];
+        
         var peer=clients[user][0];
+        console.log('peer',peer);
         peer.setRemoteDescription(answer);
         return; 
+    }
+    if(action=='user-left'){
+        remoteStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+        console.log(user);
+        var peer=clients[user][0];
+        // // // console.log(peer);
+        
+        // peer.iceConnectionState="disconnected";
+        var ice=peer.iceConnectionState;
+        console.log(ice);
+        // peer.close();
+        // peer=null;
+        // delete clients[user];
+        return;
     }
 }
